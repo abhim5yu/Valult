@@ -43,6 +43,11 @@ public class MainActivity extends AppCompatActivity {
     private String pendingImage = "";
     private int bg, card, fg, muted, accent;
     private ActivityResultLauncher<String> imagePicker;
+    private ActivityResultLauncher<String[]> filePicker;
+    private String pendingFile = "", pendingFileName = "", pendingFileMime = "";
+    private EditText filePassword;
+    private LinearLayout pairsContainer;
+    private final java.util.ArrayList<EditText[]> valuePairs = new java.util.ArrayList<>();
     private EditText draftName, draftTags, draftBody;
     private Spinner draftCat;
     private TextView imageStatus;
@@ -66,6 +71,15 @@ public class MainActivity extends AppCompatActivity {
                 if(imageStatus!=null) imageStatus.setText("Image attached  ✓");
                 toast("Image attached");
             } catch(Exception e) { toast("Image could not be loaded"); }
+        });
+        filePicker = registerForActivityResult(new ActivityResultContracts.OpenDocument(), uri -> {
+            if(uri==null)return;
+            try(InputStream in=getContentResolver().openInputStream(uri); ByteArrayOutputStream out=new ByteArrayOutputStream()){
+                byte[] buffer=new byte[8192]; int n; while((n=in.read(buffer))>0){out.write(buffer,0,n);if(out.size()>8*1024*1024){toast("Files must be 8 MB or smaller");return;}}
+                pendingFile=Base64.encodeToString(out.toByteArray(),Base64.NO_WRAP);
+                pendingFileName=getFileName(uri); pendingFileMime=getContentResolver().getType(uri);
+                if(imageStatus!=null)imageStatus.setText("Attached: "+pendingFileName);
+            }catch(Exception e){toast("Could not attach file");}
         });
         applyColors();
         showLock();
@@ -153,7 +167,7 @@ public class MainActivity extends AppCompatActivity {
         root=new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(bg);
-        root.setPadding(20,16,20,14);
+        root.setPadding(20,18,20,14);
 
         LinearLayout top=new LinearLayout(this);
         top.setGravity(Gravity.CENTER_VERTICAL);
@@ -162,7 +176,7 @@ public class MainActivity extends AppCompatActivity {
         TextView brand=label("PERSONAL VAULT  ·  OFFLINE",11,muted);
         brand.setLetterSpacing(.08f);
         titles.addView(brand);
-        TextView heading=label("Your essentials.",30,fg);
+        TextView heading=label("Your essentials.",32,fg);
         heading.setTypeface(android.graphics.Typeface.DEFAULT,android.graphics.Typeface.BOLD);
         titles.addView(heading);
         top.addView(titles,new LinearLayout.LayoutParams(0,-2,1));
@@ -175,13 +189,13 @@ public class MainActivity extends AppCompatActivity {
         lock.setOnClickListener(v->{unlocked=false;showLock();});
         root.addView(top);
 
-        TextView tagline=label("Private by design. Offline by default.",14,muted);
+        TextView tagline=label("Private by design. Offline by default.",16,muted);
         LinearLayout.LayoutParams tagp=params(-1,30);tagp.topMargin=2;root.addView(tagline,tagp);
 
         search=new EditText(this);
         search.setSingleLine(true);
-        search.setTextSize(15);
-        search.setHint("⌕   Search names, notes, tags, text…");
+        search.setTextSize(18);
+        search.setHint("Search saved files, names, notes…");
         search.setPadding(16,0,16,0);
         search.setBackground(round(card,16));
         search.setTextColor(fg);
@@ -219,7 +233,7 @@ public class MainActivity extends AppCompatActivity {
 
         LinearLayout section=new LinearLayout(this);
         section.setGravity(Gravity.CENTER_VERTICAL);
-        TextView saved=label("SAVED ITEMS",11,muted);
+        TextView saved=label("SAVED FILES",14,muted);
         saved.setLetterSpacing(.08f);
         section.addView(saved,new LinearLayout.LayoutParams(0,34,1));
         TextView count=label(items.length()+" items",12,muted);
@@ -273,7 +287,7 @@ public class MainActivity extends AppCompatActivity {
         for(int i=items.length()-1;i>=0;i--){
             JSONObject item=items.optJSONObject(i);
             if(item==null)continue;
-            String hay=(item.optString("name")+" "+item.optString("category")+" "+item.optString("tags")+" "+item.optString("body")).toLowerCase();
+            String hay=(item.optString("name")+" "+item.optString("category")+" "+item.optString("tags")+" "+item.optString("body")+" "+item.optString("fileName")+" "+item.optString("fields")).toLowerCase();
             if(!hay.contains(q))continue;
             if(!activeCategory.equals("All") && !item.optString("category","Other").equalsIgnoreCase(activeCategory))continue;
             count++;
@@ -307,15 +321,15 @@ public class MainActivity extends AppCompatActivity {
             LinearLayout names=new LinearLayout(this);
             names.setOrientation(LinearLayout.VERTICAL);
             names.setPadding(12,0,0,0);
-            TextView nm=label(item.optString("name","Untitled"),16,fg);
+            TextView nm=label(item.optString("name","Untitled"),19,fg);
             nm.setTypeface(android.graphics.Typeface.DEFAULT,android.graphics.Typeface.BOLD);
             names.addView(nm);
-            names.addView(label(item.optString("category","Other")+"  ·  "+item.optString("date",""),12,muted));
+            names.addView(label(item.optString("category","Other")+"  ·  "+item.optString("date",""),14,muted));
             row.addView(names,new LinearLayout.LayoutParams(0,-2,1));
             row.addView(label("›",24,muted));
             box.addView(row);
             if(!item.optString("body","").isEmpty()){
-                TextView preview=label(item.optString("body"),13,muted);
+                TextView preview=label(item.optString("body"),15,muted);
                 preview.setMaxLines(2);
                 preview.setPadding(58,7,0,0);
                 box.addView(preview);
@@ -363,24 +377,33 @@ public class MainActivity extends AppCompatActivity {
         draftCat.setAdapter(categoryAdapter);
         draftCat.setBackground(round(bg,14));
         draftCat.setPadding(10,0,10,0);
-        draftTags=field("e.g. personal, important");draftBody=field("Text, number or notes");
-        draftBody.setMinLines(3);draftBody.setGravity(Gravity.TOP);
+        draftTags=field("e.g. personal, important");draftBody=field("Extra notes (optional)");
+        draftBody.setMinLines(2);draftBody.setGravity(Gravity.TOP);
+        valuePairs.clear();
+        pairsContainer=new LinearLayout(this);pairsContainer.setOrientation(LinearLayout.VERTICAL);
+        addValuePair("Aadhaar","");
         form.addView(fieldLabel("NAME"));form.addView(draftName);
         form.addView(fieldLabel("CATEGORY"));form.addView(draftCat,params(-1,48));
-        form.addView(fieldLabel("TAGS"));form.addView(draftTags);
-        form.addView(fieldLabel("DETAILS"));form.addView(draftBody);
-        Button image=smallAction("＋   Add image",bg,fg);
+        form.addView(fieldLabel("TEXT DETAILS  ·  LABEL + VALUE"));
+        form.addView(pairsContainer);
+        Button addPair=smallAction("＋  Add text field",bg,fg);LinearLayout.LayoutParams pairp=params(-1,48);pairp.topMargin=8;form.addView(addPair,pairp);
+        addPair.setOnClickListener(v->addValuePair("",""));
+        form.addView(fieldLabel("NOTES (OPTIONAL)"));form.addView(draftBody);
+        form.addView(fieldLabel("ATTACHMENTS  ·  IMAGE / PDF / ZIP / OTHER"));
+        Button image=smallAction("＋   Add document or image",bg,fg);
         LinearLayout.LayoutParams ip=params(-1,48);ip.topMargin=10;form.addView(image,ip);
-        imageStatus=label(pendingImage.isEmpty()?"No image attached":"Image attached  ✓",12,muted);
-        LinearLayout.LayoutParams isp=params(-1,-2);isp.topMargin=5;form.addView(imageStatus,isp);
-        image.setOnClickListener(v->{pickingImage=true;imagePicker.launch("image/*");});
+        imageStatus=label(pendingFile.isEmpty()?"No attachment selected":"Attached: "+pendingFileName,14,muted);
+        LinearLayout.LayoutParams isp=params(-1,-2);isp.topMargin=7;form.addView(imageStatus,isp);
+        filePassword=field("Password for protected file (optional)");filePassword.setInputType(android.text.InputType.TYPE_CLASS_TEXT|android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        LinearLayout.LayoutParams fpp=params(-1,50);fpp.topMargin=8;form.addView(filePassword,fpp);
+        image.setOnClickListener(v->filePicker.launch(new String[]{"image/*","application/pdf","application/zip","application/x-zip-compressed","*/*"}));
         scroll.addView(form);LinearLayout.LayoutParams scp=params(-1,0);scp.weight=1;scp.topMargin=8;panel.addView(scroll,scp);
         LinearLayout actions=new LinearLayout(this);actions.setGravity(Gravity.CENTER_VERTICAL);
         Button cancel=smallAction("Cancel",bg,fg),save=smallAction("Save item",accent,android.graphics.Color.parseColor("#171814"));
         LinearLayout.LayoutParams acp=new LinearLayout.LayoutParams(0,50,1);acp.rightMargin=8;actions.addView(cancel,acp);
         actions.addView(save,new LinearLayout.LayoutParams(0,50,1));
         LinearLayout.LayoutParams actp=params(-1,-2);actp.topMargin=10;panel.addView(actions,actp);
-        cancel.setOnClickListener(v->{pendingImage="";dialog.dismiss();});
+        cancel.setOnClickListener(v->{pendingImage="";pendingFile="";pendingFileName="";pendingFileMime="";dialog.dismiss();});
         save.setOnClickListener(v->{
             String nm=draftName.getText().toString().trim();
             if(nm.isEmpty()){draftName.setError("Enter a name");return;}
@@ -388,14 +411,24 @@ public class MainActivity extends AppCompatActivity {
                 JSONObject obj=new JSONObject();obj.put("name",nm);
                 obj.put("category",draftCat.getSelectedItem()==null?"Other":draftCat.getSelectedItem().toString());
                 obj.put("tags",draftTags.getText().toString());obj.put("body",draftBody.getText().toString());
-                obj.put("image",pendingImage);obj.put("date",new java.text.SimpleDateFormat("dd MMM yyyy",java.util.Locale.getDefault()).format(new java.util.Date()));
-                items.put(obj);saveData();pendingImage="";dialog.dismiss();showHome();
+                JSONArray fields=new JSONArray();for(EditText[] pair:valuePairs){String key=pair[0].getText().toString().trim(),value=pair[1].getText().toString().trim();if(!key.isEmpty()||!value.isEmpty()){JSONObject fieldObj=new JSONObject();fieldObj.put("label",key);fieldObj.put("value",value);fields.put(fieldObj);}}
+                obj.put("fields",fields);obj.put("image","");obj.put("fileData",pendingFile);obj.put("fileName",pendingFileName);obj.put("fileMime",pendingFileMime);obj.put("filePassword",filePassword.getText().toString());obj.put("date",new java.text.SimpleDateFormat("dd MMM yyyy",java.util.Locale.getDefault()).format(new java.util.Date()));
+                items.put(obj);saveData();pendingImage="";pendingFile="";pendingFileName="";pendingFileMime="";dialog.dismiss();showHome();
             }catch(Exception e){toast("Could not save item");}
         });
         dialog.setContentView(panel);dialog.show();
         android.view.Window w=dialog.getWindow();
         if(w!=null){w.setBackgroundDrawableResource(android.R.color.transparent);w.setLayout((int)(getResources().getDisplayMetrics().widthPixels*.92),(int)(getResources().getDisplayMetrics().heightPixels*.82));w.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);}
     }
+    private void addValuePair(String labelValue,String valueValue){
+        LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);row.setOrientation(LinearLayout.HORIZONTAL);
+        EditText key=field("Label");key.setTextSize(16);EditText value=field("Value");value.setTextSize(16);
+        if(!labelValue.isEmpty())key.setText(labelValue);if(!valueValue.isEmpty())value.setText(valueValue);
+        LinearLayout.LayoutParams a=new LinearLayout.LayoutParams(0,54,1);a.rightMargin=7;row.addView(key,a);
+        LinearLayout.LayoutParams b=new LinearLayout.LayoutParams(0,54,1);row.addView(value,b);
+        LinearLayout.LayoutParams rp=params(-1,-2);rp.topMargin=6;pairsContainer.addView(row,rp);valuePairs.add(new EditText[]{key,value});
+    }
+    private String getFileName(Uri uri){String name="attachment";try(android.database.Cursor cursor=getContentResolver().query(uri,null,null,null,null)){if(cursor!=null&&cursor.moveToFirst()){int i=cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME);if(i>=0)name=cursor.getString(i);}}catch(Exception ignored){}return name;}
     private TextView fieldLabel(String text){
         TextView t=label(text,10,muted);t.setLetterSpacing(.1f);
         LinearLayout.LayoutParams p=params(-1,-2);p.topMargin=10;p.bottomMargin=3;t.setLayoutParams(p);return t;
@@ -414,7 +447,10 @@ public class MainActivity extends AppCompatActivity {
         LinearLayout.LayoutParams tp=params(-1,-2);tp.topMargin=6;panel.addView(title,tp);
         ScrollView scroll=new ScrollView(this);LinearLayout details=new LinearLayout(this);details.setOrientation(LinearLayout.VERTICAL);
         if(!o.optString("image","").isEmpty())try{byte[] bytes=Base64.decode(o.optString("image"),Base64.DEFAULT);ImageView im=new ImageView(this);im.setImageBitmap(BitmapFactory.decodeByteArray(bytes,0,bytes.length));im.setAdjustViewBounds(true);im.setScaleType(ImageView.ScaleType.CENTER_CROP);LinearLayout.LayoutParams p=params(-1,190);p.topMargin=14;details.addView(im,p);}catch(Exception ignored){}
-        TextView body=label(o.optString("body","No text saved"),15,fg);body.setTextIsSelectable(true);body.setPadding(14,14,14,14);body.setBackground(round(bg,16));LinearLayout.LayoutParams bp=params(-1,-2);bp.topMargin=14;details.addView(body,bp);
+        JSONArray fields=o.optJSONArray("fields");if(fields!=null)for(int i=0;i<fields.length();i++){JSONObject field=fields.optJSONObject(i);if(field==null)continue;LinearLayout pair=new LinearLayout(this);pair.setOrientation(LinearLayout.HORIZONTAL);pair.setPadding(14,14,14,14);pair.setBackground(round(bg,14));TextView key=label(field.optString("label","Field"),16,muted);TextView value=label(field.optString("value",""),17,fg);value.setTextIsSelectable(true);pair.addView(key,new LinearLayout.LayoutParams(0,-2,1));pair.addView(value,new LinearLayout.LayoutParams(0,-2,1));LinearLayout.LayoutParams pp=params(-1,-2);pp.topMargin=7;details.addView(pair,pp);}
+        if(!o.optString("body","").isEmpty()){TextView body=label(o.optString("body"),16,fg);body.setTextIsSelectable(true);body.setPadding(14,14,14,14);body.setBackground(round(bg,16));LinearLayout.LayoutParams bp=params(-1,-2);bp.topMargin=10;details.addView(body,bp);}
+        if(!o.optString("fileData","").isEmpty()){TextView attachment=label("▤  "+o.optString("fileName","Attachment")+"\nSaved offline · "+o.optString("fileMime","file"),16,fg);attachment.setPadding(14,14,14,14);attachment.setBackground(round(accent,16));LinearLayout.LayoutParams ap=params(-1,-2);ap.topMargin=10;details.addView(attachment,ap);Button export=smallAction("Export attachment",bg,fg);details.addView(export,params(-1,48));export.setOnClickListener(v->exportAttachment(o));}
+        if(!o.optString("filePassword","").isEmpty()){TextView pw=label("File password: "+o.optString("filePassword"),15,fg);pw.setTextIsSelectable(true);pw.setPadding(14,12,14,12);pw.setBackground(round(bg,14));LinearLayout.LayoutParams pwp=params(-1,-2);pwp.topMargin=8;details.addView(pw,pwp);}
         TextView tags=label("TAGS   "+(o.optString("tags","").isEmpty()?"None":o.optString("tags")),12,muted);LinearLayout.LayoutParams tagp=params(-1,-2);tagp.topMargin=12;details.addView(tags,tagp);
         TextView date=label("Saved "+o.optString("date",""),12,muted);LinearLayout.LayoutParams dp=params(-1,-2);dp.topMargin=6;details.addView(date,dp);
         scroll.addView(details);LinearLayout.LayoutParams scp=params(-1,0);scp.weight=1;scp.topMargin=8;panel.addView(scroll,scp);
@@ -426,6 +462,7 @@ public class MainActivity extends AppCompatActivity {
         dialog.setContentView(panel);dialog.show();android.view.Window w=dialog.getWindow();
         if(w!=null){w.setBackgroundDrawableResource(android.R.color.transparent);w.setLayout((int)(getResources().getDisplayMetrics().widthPixels*.92),(int)(getResources().getDisplayMetrics().heightPixels*.72));}
     }
+    private void exportAttachment(JSONObject o){try{byte[] data=Base64.decode(o.optString("fileData"),Base64.DEFAULT);File dir=new File(getExternalFilesDir(null),"exports");dir.mkdirs();File out=new File(dir,o.optString("fileName","attachment"));try(FileOutputStream stream=new FileOutputStream(out)){stream.write(data);}Intent share=new Intent(Intent.ACTION_SEND);share.setType(o.optString("fileMime","application/octet-stream"));share.putExtra(Intent.EXTRA_STREAM,androidx.core.content.FileProvider.getUriForFile(this,getPackageName()+".provider",out));share.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);startActivity(Intent.createChooser(share,"Export attachment"));}catch(Exception e){toast("Could not export attachment");}}
     private EditText field(String hint){EditText e=new EditText(this);e.setHint(hint);e.setTextSize(15);e.setPadding(14,10,14,10);e.setTextColor(fg);e.setHintTextColor(muted);e.setSingleLine(false);e.setBackground(round(bg,14));e.setElevation(0);return e;}
     private Button button(String text){Button b=new Button(this);b.setText(text);b.setAllCaps(false);b.setTextColor(android.graphics.Color.parseColor("#171814"));b.setBackground(round(accent,22));return b;}
     private TextView label(String s,int size,int color){TextView t=new TextView(this);t.setText(s);t.setTextSize(size);t.setTextColor(color);return t;}
