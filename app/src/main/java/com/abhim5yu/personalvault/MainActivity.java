@@ -479,6 +479,18 @@ public class MainActivity extends AppCompatActivity {
     private LinearLayout.LayoutParams params(int w,int h){return new LinearLayout.LayoutParams(w<0?w:w,h<0?h:h);}
     private void toast(String s){Toast.makeText(this,s,Toast.LENGTH_SHORT).show();}
     @Override public void onBackPressed(){if(unlocked){unlocked=false;showLock();}else super.onBackPressed();}
-    @Override protected void onStop(){super.onStop();if(unlocked && !pickingImage){unlocked=false;relockOnResume=true;}}
-    @Override protected void onResume(){super.onResume();if(relockOnResume){relockOnResume=false;showLock();}}
+    @Override protected void onStop(){
+        super.onStop();
+        // Don't replace the screen while Android is showing the system document picker.
+        // Relock when returning from a genuine background transition instead.
+        if(unlocked && !pickingImage) relockOnResume=true;
+    }
+    @Override protected void onResume(){
+        super.onResume();
+        if(relockOnResume && !pickingImage){
+            relockOnResume=false;
+            unlocked=false;
+            showLock();
+        }
+    }
 }
