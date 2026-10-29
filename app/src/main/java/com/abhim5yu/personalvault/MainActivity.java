@@ -38,7 +38,7 @@ public class MainActivity extends AppCompatActivity {
     private LinearLayout root, content, list;
     private EditText search;
     private JSONArray items = new JSONArray();
-    private boolean dark = false, unlocked = false, relockOnResume = false;
+    private boolean dark = false, unlocked = false, relockOnResume = false, pickingImage = false;
     private String pendingImage = "";
     private int bg, card, fg, muted, accent;
     private ActivityResultLauncher<String> imagePicker;
@@ -50,6 +50,7 @@ public class MainActivity extends AppCompatActivity {
         getWindow().setStatusBarColor(android.graphics.Color.rgb(246,247,239));
         getWindow().setNavigationBarColor(android.graphics.Color.rgb(246,247,239));
         imagePicker = registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
+            pickingImage = false;
             if (uri == null) return;
             try (InputStream in = getContentResolver().openInputStream(uri)) {
                 Bitmap bitmap = BitmapFactory.decodeStream(in);
@@ -342,7 +343,7 @@ public class MainActivity extends AppCompatActivity {
         LinearLayout.LayoutParams ip=params(-1,48);ip.topMargin=10;form.addView(image,ip);
         imageStatus=label(pendingImage.isEmpty()?"No image attached":"Image attached  ✓",12,muted);
         LinearLayout.LayoutParams isp=params(-1,-2);isp.topMargin=5;form.addView(imageStatus,isp);
-        image.setOnClickListener(v->imagePicker.launch("image/*"));
+        image.setOnClickListener(v->{pickingImage=true;imagePicker.launch("image/*");});
         scroll.addView(form);LinearLayout.LayoutParams scp=params(-1,0);scp.weight=1;scp.topMargin=8;panel.addView(scroll,scp);
         LinearLayout actions=new LinearLayout(this);actions.setGravity(Gravity.CENTER_VERTICAL);
         Button cancel=smallAction("Cancel",bg,fg),save=smallAction("Save item",accent,android.graphics.Color.parseColor("#171814"));
@@ -402,6 +403,6 @@ public class MainActivity extends AppCompatActivity {
     private LinearLayout.LayoutParams params(int w,int h){return new LinearLayout.LayoutParams(w<0?w:w,h<0?h:h);}
     private void toast(String s){Toast.makeText(this,s,Toast.LENGTH_SHORT).show();}
     @Override public void onBackPressed(){if(unlocked){unlocked=false;showLock();}else super.onBackPressed();}
-    @Override protected void onStop(){super.onStop();if(unlocked){unlocked=false;relockOnResume=true;}}
+    @Override protected void onStop(){super.onStop();if(unlocked && !pickingImage){unlocked=false;relockOnResume=true;}}
     @Override protected void onResume(){super.onResume();if(relockOnResume){relockOnResume=false;showLock();}}
 }
