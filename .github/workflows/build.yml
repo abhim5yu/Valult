@@ -15,6 +15,18 @@ jobs:
       RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Check signing secrets
+        run: |
+          missing=0
+          for v in RELEASE_KEYSTORE_BASE64 RELEASE_STORE_PASSWORD RELEASE_KEY_ALIAS RELEASE_KEY_PASSWORD; do
+            if [ -z "${!v}" ]; then echo "::error::Missing GitHub secret $v"; missing=1; fi
+          done
+          if [ "$missing" = "1" ]; then
+            echo "::error::Add all 4 secrets (Settings > Secrets and variables > Actions). Without a fixed signing key, Android refuses to install builds over the old app."
+            exit 1
+          fi
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -25,44 +37,31 @@ jobs:
           packages: platform-tools
       - name: Install Android SDK
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
-      - name: Configure persistent signing key
-        if: ${{ env.RELEASE_KEYSTORE_BASE64 != '' && env.RELEASE_STORE_PASSWORD != '' && env.RELEASE_KEY_ALIAS != '' && env.RELEASE_KEY_PASSWORD != '' }}
-        env:
-          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
-          RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
-          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
-          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+
+      - name: Restore signing key
         run: |
           echo "$RELEASE_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/personal-vault-release.jks"
           echo "RELEASE_KEYSTORE_PATH=$RUNNER_TEMP/personal-vault-release.jks" >> "$GITHUB_ENV"
-          echo "RELEASE_STORE_PASSWORD=$RELEASE_STORE_PASSWORD" >> "$GITHUB_ENV"
-          echo "RELEASE_KEY_ALIAS=$RELEASE_KEY_ALIAS" >> "$GITHUB_ENV"
-          echo "RELEASE_KEY_PASSWORD=$RELEASE_KEY_PASSWORD" >> "$GITHUB_ENV"
+
       - name: Build signed release APK
-        if: ${{ env.RELEASE_KEYSTORE_BASE64 != '' && env.RELEASE_STORE_PASSWORD != '' && env.RELEASE_KEY_ALIAS != '' && env.RELEASE_KEY_PASSWORD != '' }}
         run: gradle assembleRelease --no-daemon
-      - name: Build debug APK (signing secrets not configured)
-        if: ${{ env.RELEASE_KEYSTORE_BASE64 == '' || env.RELEASE_STORE_PASSWORD == '' || env.RELEASE_KEY_ALIAS == '' || env.RELEASE_KEY_PASSWORD == '' }}
+
+      - name: Rename APK and show signing fingerprint
         run: |
-          echo "::warning::Using a debug-signed APK. Configure all four RELEASE_* secrets for stable in-place updates."
-          gradle assembleDebug --no-daemon
-      - name: Rename APK
-        run: |
-          if [ -f app/build/outputs/apk/release/app-release.apk ]; then
-            cp app/build/outputs/apk/release/app-release.apk PersonalVault.apk
-          else
-            cp app/build/outputs/apk/debug/app-debug.apk PersonalVault.apk
-          fi
+          cp app/build/outputs/apk/release/app-release.apk PersonalVault.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs PersonalVault.apk | grep -i "SHA-256"
+
       - uses: actions/upload-artifact@v4
         with:
           name: PersonalVault-APK
           path: PersonalVault.apk
           retention-days: 30
+
       - name: Publish downloadable APK release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
           name: Personal Vault build ${{ github.run_number }}
-          body: "Personal Vault APK. Configure the same persistent release signing key for reliable in-place updates."
+          body: "Personal Vault APK. Install over the previous version to update."
           files: PersonalVault.apk
           make_latest: true
