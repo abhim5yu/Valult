@@ -76,6 +76,7 @@ public class MainActivity extends AppCompatActivity {
         });
         exportPicker = registerForActivityResult(new ActivityResultContracts.CreateDocument("application/octet-stream"), uri -> {if(uri==null||exportBytes==null)return;try(OutputStream out=getContentResolver().openOutputStream(uri)){if(out!=null)out.write(exportBytes);toast("Attachment exported");}catch(Exception e){toast("Could not export attachment");}finally{exportBytes=null;}});
         filePicker = registerForActivityResult(new ActivityResultContracts.OpenDocument(), uri -> {
+            pickingImage=false;
             if(uri==null)return;
             try(InputStream in=getContentResolver().openInputStream(uri); ByteArrayOutputStream out=new ByteArrayOutputStream()){
                 byte[] buffer=new byte[8192]; int n; while((n=in.read(buffer))>0){out.write(buffer,0,n);if(out.size()>8*1024*1024){toast("Files must be 8 MB or smaller");return;}}
@@ -399,7 +400,7 @@ public class MainActivity extends AppCompatActivity {
         LinearLayout.LayoutParams isp=params(-1,-2);isp.topMargin=7;form.addView(imageStatus,isp);
         filePassword=field("Password for protected file (optional)");filePassword.setInputType(android.text.InputType.TYPE_CLASS_TEXT|android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
         LinearLayout.LayoutParams fpp=params(-1,50);fpp.topMargin=8;form.addView(filePassword,fpp);
-        image.setOnClickListener(v->filePicker.launch(new String[]{"image/*","application/pdf","application/zip","application/x-zip-compressed","*/*"}));
+        image.setOnClickListener(v->{pickingImage=true;filePicker.launch(new String[]{"image/*","application/pdf","application/zip","application/x-zip-compressed","*/*"});});
         scroll.addView(form);LinearLayout.LayoutParams scp=params(-1,0);scp.weight=1;scp.topMargin=8;panel.addView(scroll,scp);
         LinearLayout actions=new LinearLayout(this);actions.setGravity(Gravity.CENTER_VERTICAL);
         Button cancel=smallAction("Cancel",bg,fg),save=smallAction("Save item",accent,android.graphics.Color.parseColor("#171814"));
