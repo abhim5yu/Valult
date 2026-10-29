@@ -137,50 +137,183 @@ public class MainActivity extends AppCompatActivity {
 
     private void showHome(){
         applyColors();
-        root=new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setBackgroundColor(bg); root.setPadding(20,18,20,8);
-        LinearLayout top=new LinearLayout(this); top.setGravity(Gravity.CENTER_VERTICAL);
-        LinearLayout titles=new LinearLayout(this); titles.setOrientation(LinearLayout.VERTICAL);
-        titles.addView(label("PERSONAL VAULT",11,muted));
-        titles.addView(label("Your essentials.",29,fg));
+        getWindow().setStatusBarColor(bg);
+        getWindow().setNavigationBarColor(bg);
+        if (android.os.Build.VERSION.SDK_INT >= 29) {
+            getWindow().getDecorView().setSystemUiVisibility(dark ? 0 :
+                View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+        }
+
+        root=new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setBackgroundColor(bg);
+        root.setPadding(20,16,20,14);
+
+        LinearLayout top=new LinearLayout(this);
+        top.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout titles=new LinearLayout(this);
+        titles.setOrientation(LinearLayout.VERTICAL);
+        TextView brand=label("PERSONAL VAULT",11,muted);
+        brand.setLetterSpacing(.08f);
+        titles.addView(brand);
+        TextView heading=label("Your essentials",27,fg);
+        heading.setTypeface(android.graphics.Typeface.DEFAULT,android.graphics.Typeface.BOLD);
+        titles.addView(heading);
         top.addView(titles,new LinearLayout.LayoutParams(0,-2,1));
-        Button theme=button(dark?"☀":"☾"); top.addView(theme,params(52,48)); theme.setOnClickListener(v->{dark=!dark;showHome();});
-        Button lock=button("⌑"); top.addView(lock,params(52,48)); lock.setOnClickListener(v->{unlocked=false;showLock();});
+
+        Button theme=smallIconButton(dark?"☀":"☾");
+        top.addView(theme,params(44,44));
+        theme.setOnClickListener(v->{dark=!dark;showHome();});
+        Button lock=smallIconButton("⌑");
+        LinearLayout.LayoutParams lp=params(44,44);lp.leftMargin=8;top.addView(lock,lp);
+        lock.setOnClickListener(v->{unlocked=false;showLock();});
         root.addView(top);
-        TextView tagline=label("Private by design. Offline by default.",13,muted); root.addView(tagline,params(-1,34));
-        search=new EditText(this); search.setSingleLine(true); search.setTextSize(15); search.setHint("Search names, notes, tags, text…");
-        search.setPadding(18,4,18,4); search.setBackground(round(card,18)); search.setTextColor(fg); search.setHintTextColor(muted);
-        root.addView(search,params(-1,54));
-        LinearLayout chips=new LinearLayout(this); chips.setPadding(0,12,0,10);
+
+        TextView tagline=label("Private by design. Offline by default.",13,muted);
+        LinearLayout.LayoutParams tagp=params(-1,30);tagp.topMargin=2;root.addView(tagline,tagp);
+
+        search=new EditText(this);
+        search.setSingleLine(true);
+        search.setTextSize(15);
+        search.setHint("⌕   Search everything…");
+        search.setPadding(16,0,16,0);
+        search.setBackground(round(card,16));
+        search.setTextColor(fg);
+        search.setHintTextColor(muted);
+        search.setElevation(0);
+        root.addView(search,params(-1,50));
+
+        HorizontalScrollView horizontal=new HorizontalScrollView(this);
+        horizontal.setHorizontalScrollBarEnabled(false);
+        LinearLayout chips=new LinearLayout(this);
+        chips.setPadding(0,12,0,14);
         String[] cats={"All","Identity","Banking","Personal","Other"};
-        for(String c:cats){TextView chip=label(c,12,fg);chip.setGravity(Gravity.CENTER);chip.setPadding(12,0,12,0);chip.setBackground(round(c.equals("All")?accent:card,20));LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-2,38);cp.setMargins(0,0,7,0);chips.addView(chip,cp);chip.setOnClickListener(v->{search.setText(c.equals("All")?"":c);});}
-        root.addView(chips);
-        ScrollView sc=new ScrollView(this); content=new LinearLayout(this); content.setOrientation(LinearLayout.VERTICAL);
-        TextView heading=label("SAVED ITEMS",12,muted); content.addView(heading,params(-1,35));
-        list=content; sc.addView(content); root.addView(sc,new LinearLayout.LayoutParams(-1,0,1));
-        Button add=button("+   Add information"); add.setTextSize(16); root.addView(add,params(-1,56)); add.setOnClickListener(v->{pendingImage="";showAddDialog();});
-        search.addTextChangedListener(new TextWatcher(){public void beforeTextChanged(CharSequence s,int st,int c,int a){}public void onTextChanged(CharSequence s,int st,int before,int count){renderItems(s.toString());}public void afterTextChanged(Editable e){}});
-        setContentView(root); renderItems("");
+        for(String category:cats){
+            TextView chip=label(category,13,fg);
+            chip.setGravity(Gravity.CENTER);
+            chip.setPadding(15,0,15,0);
+            chip.setBackground(round(category.equals("All")?accent:card,18));
+            LinearLayout.LayoutParams cp=params(-2,34);
+            cp.setMargins(0,0,8,0);
+            chips.addView(chip,cp);
+            chip.setOnClickListener(v->{
+                search.setText(category.equals("All")?"":category);
+                search.setSelection(search.getText().length());
+            });
+        }
+        horizontal.addView(chips);
+        root.addView(horizontal);
+
+        LinearLayout section=new LinearLayout(this);
+        section.setGravity(Gravity.CENTER_VERTICAL);
+        TextView saved=label("SAVED ITEMS",11,muted);
+        saved.setLetterSpacing(.08f);
+        section.addView(saved,new LinearLayout.LayoutParams(0,34,1));
+        TextView count=label(items.length()+" items",12,muted);
+        section.addView(count);
+        root.addView(section);
+
+        ScrollView sc=new ScrollView(this);
+        sc.setFillViewport(true);
+        sc.setClipToPadding(false);
+        sc.setPadding(0,4,0,8);
+        list=new LinearLayout(this);
+        list.setOrientation(LinearLayout.VERTICAL);
+        list.setPadding(0,0,0,8);
+        sc.addView(list);
+        root.addView(sc,new LinearLayout.LayoutParams(-1,0,1));
+
+        Button add=button("+   Add information");
+        add.setTextSize(15);
+        add.setTypeface(android.graphics.Typeface.DEFAULT,android.graphics.Typeface.BOLD);
+        LinearLayout.LayoutParams addp=params(-1,54);
+        addp.topMargin=8;
+        root.addView(add,addp);
+        add.setOnClickListener(v->{pendingImage="";showAddDialog();});
+
+        search.addTextChangedListener(new TextWatcher(){
+            public void beforeTextChanged(CharSequence s,int st,int before,int count){}
+            public void onTextChanged(CharSequence s,int st,int before,int count){renderItems(s.toString());}
+            public void afterTextChanged(Editable e){}
+        });
+        setContentView(root);
+        renderItems("");
+    }
+
+    private Button smallIconButton(String text){
+        Button b=new Button(this);
+        b.setText(text);
+        b.setTextSize(18);
+        b.setMinWidth(0);b.setMinimumWidth(0);
+        b.setPadding(0,0,0,0);
+        b.setAllCaps(false);
+        b.setTextColor(fg);
+        b.setBackground(round(card,16));
+        return b;
     }
 
     private void renderItems(String query){
         if(list==null)return;
-        while(list.getChildCount()>1)list.removeViewAt(1);
-        String q=query.toLowerCase().trim(); int count=0;
+        list.removeAllViews();
+        String q=query.toLowerCase().trim();
+        int count=0;
         for(int i=items.length()-1;i>=0;i--){
-            JSONObject item=items.optJSONObject(i); if(item==null)continue;
+            JSONObject item=items.optJSONObject(i);
+            if(item==null)continue;
             String hay=(item.optString("name")+" "+item.optString("category")+" "+item.optString("tags")+" "+item.optString("body")).toLowerCase();
-            if(!hay.contains(q))continue; count++;
-            LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(16,14,16,14);box.setBackground(round(card,22));
-            LinearLayout.LayoutParams bp=params(-1,-2);bp.setMargins(0,0,0,10);list.addView(box,bp);
-            LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);
-            TextView symbol=label(item.optString("image","").isEmpty()?"▤":"▧",22,fg);symbol.setGravity(Gravity.CENTER);symbol.setBackground(round(accent,15));row.addView(symbol,params(46,46));
-            LinearLayout names=new LinearLayout(this);names.setOrientation(LinearLayout.VERTICAL);names.setPadding(12,0,0,0);
-            names.addView(label(item.optString("name","Untitled"),17,fg));names.addView(label(item.optString("category","Other")+"  ·  "+item.optString("date",""),12,muted));
-            row.addView(names,new LinearLayout.LayoutParams(0,-2,1));row.addView(label("›",26,muted));box.addView(row);
-            if(!item.optString("body","").isEmpty()){TextView preview=label(item.optString("body"),13,muted);preview.setMaxLines(2);preview.setPadding(58,8,0,0);box.addView(preview);}
-            final int idx=i;box.setOnClickListener(v->showDetails(idx));
+            if(!hay.contains(q))continue;
+            count++;
+            LinearLayout box=new LinearLayout(this);
+            box.setOrientation(LinearLayout.VERTICAL);
+            box.setPadding(14,14,14,14);
+            box.setBackground(round(card,20));
+            LinearLayout.LayoutParams bp=params(-1,-2);
+            bp.bottomMargin=10;
+            list.addView(box,bp);
+
+            LinearLayout row=new LinearLayout(this);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            TextView symbol=label(item.optString("image","").isEmpty()?"▤":"▧",21,fg);
+            symbol.setGravity(Gravity.CENTER);
+            symbol.setBackground(round(accent,14));
+            row.addView(symbol,params(46,46));
+            LinearLayout names=new LinearLayout(this);
+            names.setOrientation(LinearLayout.VERTICAL);
+            names.setPadding(12,0,0,0);
+            TextView nm=label(item.optString("name","Untitled"),16,fg);
+            nm.setTypeface(android.graphics.Typeface.DEFAULT,android.graphics.Typeface.BOLD);
+            names.addView(nm);
+            names.addView(label(item.optString("category","Other")+"  ·  "+item.optString("date",""),12,muted));
+            row.addView(names,new LinearLayout.LayoutParams(0,-2,1));
+            row.addView(label("›",24,muted));
+            box.addView(row);
+            if(!item.optString("body","").isEmpty()){
+                TextView preview=label(item.optString("body"),13,muted);
+                preview.setMaxLines(2);
+                preview.setPadding(58,7,0,0);
+                box.addView(preview);
+            }
+            final int idx=i;
+            box.setOnClickListener(v->showDetails(idx));
         }
-        if(count==0){TextView empty=label(q.isEmpty()?"Nothing saved yet":"No matching information",16,muted);empty.setGravity(Gravity.CENTER);empty.setPadding(10,50,10,50);list.addView(empty);}
+        if(count==0){
+            LinearLayout empty=new LinearLayout(this);
+            empty.setOrientation(LinearLayout.VERTICAL);
+            empty.setGravity(Gravity.CENTER);
+            empty.setPadding(20,32,20,32);
+            empty.setBackground(round(card,22));
+            TextView icon=label(q.isEmpty()?"＋":"⌕",30,fg);
+            icon.setGravity(Gravity.CENTER);
+            empty.addView(icon,params(-1,46));
+            TextView title=label(q.isEmpty()?"Your vault starts here":"No results found",17,fg);
+            title.setTypeface(android.graphics.Typeface.DEFAULT,android.graphics.Typeface.BOLD);
+            title.setGravity(Gravity.CENTER);
+            LinearLayout.LayoutParams tp=params(-1,-2);tp.topMargin=8;empty.addView(title,tp);
+            TextView hint=label(q.isEmpty()?"Add your first document, card or note.":"Try another name, tag or keyword.",13,muted);
+            hint.setGravity(Gravity.CENTER);
+            LinearLayout.LayoutParams hp=params(-1,-2);hp.topMargin=5;empty.addView(hint,hp);
+            list.addView(empty,params(-1,-2));
+        }
     }
 
     private void showAddDialog(){
