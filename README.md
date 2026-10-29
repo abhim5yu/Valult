@@ -8,10 +8,11 @@ An offline-first Android app for saving essential personal information, notes an
 - Search across saved names, categories, tags and text
 - Attach an image to an entry
 - Pastel green, rounded-card interface with a dark-mode toggle
-- No account, cloud sync, or internet permission in the app
+- No account or cloud sync. Internet is used only to check GitHub for a newer version (your data never leaves the device)
+- In-app update check: tap ↻ or open the app; if a newer build exists it offers the download
 
 ## Build
-Every push to `main` runs GitHub Actions and publishes a debug APK as a downloadable GitHub Release.
+Every push to `main` runs GitHub Actions and publishes a signed APK as a downloadable GitHub Release. All builds use the same signing key (GitHub secrets) and a higher version number each time, so a new APK installs over the old one as an update.
 
 **Latest APK:** https://github.com/abhim5yu/Valult/releases/latest/download/PersonalVault.apk
 
