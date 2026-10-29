@@ -409,19 +409,28 @@ public class MainActivity extends AppCompatActivity {
         addValuePair("Aadhaar","");
         form.addView(fieldLabel("NAME"));form.addView(draftName);
         form.addView(fieldLabel("CATEGORY"));form.addView(draftCat,params(-1,48));
-        form.addView(fieldLabel("TEXT DETAILS  ·  LABEL + VALUE"));
+        form.addView(fieldLabel("TEXT DETAILS  ·  TITLE + NUMBER"));
         form.addView(pairsContainer);
         Button addPair=smallAction("＋  Add text field",bg,fg);LinearLayout.LayoutParams pairp=params(-1,48);pairp.topMargin=dp(8);form.addView(addPair,pairp);
         addPair.setOnClickListener(v->addValuePair("",""));
         form.addView(fieldLabel("NOTES (OPTIONAL)"));form.addView(draftBody);
-        form.addView(fieldLabel("ATTACHMENTS  ·  IMAGE / PDF / ZIP / OTHER"));
-        Button image=smallAction("＋   Add document or image",bg,fg);
-        LinearLayout.LayoutParams ip=params(-1,48);ip.topMargin=dp(10);form.addView(image,ip);
-        imageStatus=label(pendingFile.isEmpty()?"No attachment selected":"Attached: "+pendingFileName,14,muted);
-        LinearLayout.LayoutParams isp=params(-1,-2);isp.topMargin=dp(7);form.addView(imageStatus,isp);
-        filePassword=field("Password for protected file (optional)");filePassword.setInputType(android.text.InputType.TYPE_CLASS_TEXT|android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
-        LinearLayout.LayoutParams fpp=params(-1,50);fpp.topMargin=dp(8);form.addView(filePassword,fpp);
-        image.setOnClickListener(v->{pickingImage=true;filePicker.launch(new String[]{"image/*","application/pdf","application/zip","application/x-zip-compressed","*/*"});});
+        form.addView(fieldLabel("ATTACHMENT"));
+        LinearLayout fileBox=new LinearLayout(this);fileBox.setOrientation(LinearLayout.VERTICAL);
+        fileBox.setPadding(dp(10),dp(10),dp(10),dp(12));fileBox.setBackground(outlined(bg,18));
+        LinearLayout drop=new LinearLayout(this);drop.setOrientation(LinearLayout.VERTICAL);drop.setGravity(Gravity.CENTER);
+        drop.setPadding(dp(12),dp(22),dp(12),dp(22));drop.setBackground(dashed(14));
+        TextView dropIcon=label("＋",32,accent);dropIcon.setGravity(Gravity.CENTER);
+        TextView dropTitle=label("Tap to upload image or file",15,fg);dropTitle.setGravity(Gravity.CENTER);dropTitle.setTypeface(null,android.graphics.Typeface.BOLD);
+        TextView dropSub=label("IMAGE  ·  PDF  ·  ZIP  ·  OTHER",10,muted);dropSub.setGravity(Gravity.CENTER);dropSub.setLetterSpacing(.08f);
+        LinearLayout.LayoutParams dsp=params(-1,-2);dsp.topMargin=dp(4);
+        drop.addView(dropIcon,params(-1,-2));drop.addView(dropTitle,params(-1,-2));drop.addView(dropSub,dsp);
+        fileBox.addView(drop,params(-1,-2));
+        imageStatus=label(pendingFile.isEmpty()?"No file selected":"Attached: "+pendingFileName,14,muted);imageStatus.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams isp=params(-1,-2);isp.topMargin=dp(10);fileBox.addView(imageStatus,isp);
+        filePassword=innerField("Password for protected file (optional)");filePassword.setSingleLine(true);filePassword.setInputType(android.text.InputType.TYPE_CLASS_TEXT|android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        LinearLayout.LayoutParams fpp=params(-1,50);fpp.topMargin=dp(10);fileBox.addView(filePassword,fpp);
+        form.addView(fileBox,params(-1,-2));
+        drop.setOnClickListener(v->{pickingImage=true;filePicker.launch(new String[]{"image/*","application/pdf","application/zip","application/x-zip-compressed","*/*"});});
         scroll.addView(form);LinearLayout.LayoutParams scp=params(-1,0);scp.weight=1;scp.topMargin=dp(8);panel.addView(scroll,scp);
         LinearLayout actions=new LinearLayout(this);actions.setGravity(Gravity.CENTER_VERTICAL);
         Button cancel=smallAction("Cancel",bg,fg),save=smallAction("Save item",accent,android.graphics.Color.parseColor("#171814"));
@@ -446,13 +455,21 @@ public class MainActivity extends AppCompatActivity {
         if(w!=null){w.setBackgroundDrawableResource(android.R.color.transparent);w.setLayout((int)(getResources().getDisplayMetrics().widthPixels*.92),(int)(getResources().getDisplayMetrics().heightPixels*.82));w.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);}
     }
     private void addValuePair(String labelValue,String valueValue){
-        LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);row.setOrientation(LinearLayout.HORIZONTAL);
-        EditText key=field("Label");key.setTextSize(16);EditText value=field("Value");value.setTextSize(16);
+        LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.HORIZONTAL);box.setGravity(Gravity.CENTER_VERTICAL);
+        box.setPadding(dp(8),dp(8),dp(8),dp(8));box.setBackground(outlined(bg,18));
+        EditText key=innerField("Title");EditText value=innerField("Number");
+        key.setSingleLine(true);value.setSingleLine(true);key.setTextSize(16);value.setTextSize(16);
+        key.setGravity(Gravity.CENTER_VERTICAL);value.setGravity(Gravity.CENTER_VERTICAL);
         if(!labelValue.isEmpty())key.setText(labelValue);if(!valueValue.isEmpty())value.setText(valueValue);
-        LinearLayout.LayoutParams a=lp(0,54,1);a.rightMargin=dp(7);row.addView(key,a);
-        LinearLayout.LayoutParams b=lp(0,54,1);row.addView(value,b);
-        LinearLayout.LayoutParams rp=params(-1,-2);rp.topMargin=dp(6);pairsContainer.addView(row,rp);valuePairs.add(new EditText[]{key,value});
+        LinearLayout.LayoutParams ka=lp(0,50,1);ka.rightMargin=dp(8);box.addView(key,ka);
+        box.addView(value,lp(0,50,1));
+        LinearLayout.LayoutParams rp=params(-1,-2);rp.topMargin=dp(8);pairsContainer.addView(box,rp);valuePairs.add(new EditText[]{key,value});
     }
+    private EditText innerField(String hint){EditText e=field(hint);e.setBackground(round(card,12));return e;}
+    private android.graphics.drawable.GradientDrawable outlined(int color,int radius){
+        android.graphics.drawable.GradientDrawable d=round(color,radius);d.setStroke(dp(1),(muted&0x00FFFFFF)|0x4D000000);return d;}
+    private android.graphics.drawable.GradientDrawable dashed(int radius){
+        android.graphics.drawable.GradientDrawable d=round(card,radius);d.setStroke(dp(2),(accent&0x00FFFFFF)|0xB3000000,dp(7),dp(5));return d;}
     private String getFileName(Uri uri){String name="attachment";try(android.database.Cursor cursor=getContentResolver().query(uri,null,null,null,null)){if(cursor!=null&&cursor.moveToFirst()){int i=cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME);if(i>=0)name=cursor.getString(i);}}catch(Exception ignored){}return name;}
     private TextView fieldLabel(String text){
         TextView t=label(text,10,muted);t.setLetterSpacing(.1f);
