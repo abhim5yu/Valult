@@ -180,7 +180,7 @@ public class MainActivity extends AppCompatActivity {
         TextView brand=label("PERSONAL VAULT  ·  OFFLINE",11,muted);
         brand.setLetterSpacing(.08f);
         titles.addView(brand);
-        TextView heading=label("Your essentials.",32,fg);
+        TextView heading=label("Personal Vault",34,fg);
         heading.setTypeface(android.graphics.Typeface.DEFAULT,android.graphics.Typeface.BOLD);
         titles.addView(heading);
         top.addView(titles,new LinearLayout.LayoutParams(0,-2,1));
@@ -193,15 +193,27 @@ public class MainActivity extends AppCompatActivity {
         lock.setOnClickListener(v->{unlocked=false;showLock();});
         root.addView(top);
 
-        TextView tagline=label("Private by design. Offline by default.",16,muted);
+        TextView tagline=label("Your important information, kept private.",17,muted);
         LinearLayout.LayoutParams tagp=params(-1,30);tagp.topMargin=2;root.addView(tagline,tagp);
+
+        Button add=button("＋   Add information");
+        add.setTextSize(15);
+        add.setTypeface(android.graphics.Typeface.DEFAULT,android.graphics.Typeface.BOLD);
+        LinearLayout.LayoutParams addp=params(-1,54);
+        addp.topMargin=8;
+        root.addView(add,addp);
+        add.setOnClickListener(v->{pendingImage="";showAddDialog();});
+
+        TextView savedIntro=label("YOUR FILES",13,muted);
+        savedIntro.setLetterSpacing(.12f);
+        LinearLayout.LayoutParams introParams=params(-1,-2);introParams.topMargin=20;introParams.bottomMargin=6;root.addView(savedIntro,introParams);
 
         LinearLayout section=new LinearLayout(this);
         section.setGravity(Gravity.CENTER_VERTICAL);
-        TextView saved=label("SAVED FILES",16,fg);
+        TextView saved=label("Saved files",22,fg);
         saved.setLetterSpacing(.08f);
         section.addView(saved,new LinearLayout.LayoutParams(0,34,1));
-        TextView count=label(items.length()+" items",12,muted);
+        TextView count=label(items.length()+" items",15,muted);
         section.addView(count);
         root.addView(section);
 
@@ -254,14 +266,6 @@ public class MainActivity extends AppCompatActivity {
         list.setPadding(0,0,0,8);
         sc.addView(list);
         root.addView(sc,new LinearLayout.LayoutParams(-1,0,1));
-
-        Button add=button("＋   Add information");
-        add.setTextSize(15);
-        add.setTypeface(android.graphics.Typeface.DEFAULT,android.graphics.Typeface.BOLD);
-        LinearLayout.LayoutParams addp=params(-1,54);
-        addp.topMargin=8;
-        root.addView(add,addp);
-        add.setOnClickListener(v->{pendingImage="";showAddDialog();});
 
         search.addTextChangedListener(new TextWatcher(){
             public void beforeTextChanged(CharSequence s,int st,int before,int count){}
@@ -326,10 +330,10 @@ public class MainActivity extends AppCompatActivity {
             LinearLayout names=new LinearLayout(this);
             names.setOrientation(LinearLayout.VERTICAL);
             names.setPadding(12,0,0,0);
-            TextView nm=label(item.optString("name","Untitled"),19,fg);
+            TextView nm=label(item.optString("name","Untitled"),21,fg);
             nm.setTypeface(android.graphics.Typeface.DEFAULT,android.graphics.Typeface.BOLD);
             names.addView(nm);
-            names.addView(label(item.optString("category","Other")+"  ·  "+item.optString("date",""),14,muted));
+            names.addView(label(item.optString("category","Other")+"  ·  "+item.optString("date",""),15,muted));
             row.addView(names,new LinearLayout.LayoutParams(0,-2,1));
             row.addView(label("›",24,muted));
             box.addView(row);
