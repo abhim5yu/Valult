@@ -11,6 +11,7 @@ import android.view.View;
 import android.view.Gravity;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.*;
+import android.app.Dialog;
 import android.text.Editable;
 import android.text.TextWatcher;
 import androidx.activity.result.ActivityResultLauncher;
@@ -41,6 +42,8 @@ public class MainActivity extends AppCompatActivity {
     private String pendingImage = "";
     private int bg, card, fg, muted, accent;
     private ActivityResultLauncher<String> imagePicker;
+    private EditText draftName, draftCat, draftTags, draftBody;
+    private TextView imageStatus;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -57,8 +60,8 @@ public class MainActivity extends AppCompatActivity {
                 ByteArrayOutputStream out=new ByteArrayOutputStream();
                 small.compress(Bitmap.CompressFormat.JPEG, 78, out);
                 pendingImage=Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP);
+                if(imageStatus!=null) imageStatus.setText("Image attached  ✓");
                 toast("Image attached");
-                showAddDialog();
             } catch(Exception e) { toast("Image could not be loaded"); }
         });
         applyColors();
@@ -317,29 +320,80 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showAddDialog(){
-        LinearLayout form=new LinearLayout(this);form.setOrientation(LinearLayout.VERTICAL);form.setPadding(20,4,20,0);
-        EditText name=field("Name (e.g. Aadhaar card)");EditText cat=field("Category (Identity, Banking, Personal…)");EditText tags=field("Tags (comma separated)");EditText body=field("Text, number, notes or details");body.setMinLines(3);body.setGravity(Gravity.TOP);
-        form.addView(name);form.addView(cat);form.addView(tags);form.addView(body);
-        new androidx.appcompat.app.AlertDialog.Builder(this).setTitle("Add to your vault").setView(form)
-          .setNeutralButton("＋ Image",(d,w)->{pendingImage="";imagePicker.launch("image/*");})
-          .setNegativeButton("Cancel",(d,w)->{})
-          .setPositiveButton("Save",(d,w)->{
-              if(name.getText().toString().trim().isEmpty()){toast("Add a name first");return;}
-              JSONObject obj=new JSONObject();
-              try{obj.put("name",name.getText().toString().trim());obj.put("category",cat.getText().toString().trim().isEmpty()?"Other":cat.getText().toString().trim());obj.put("tags",tags.getText().toString());obj.put("body",body.getText().toString());obj.put("image",pendingImage);obj.put("date",new java.text.SimpleDateFormat("dd MMM yyyy",java.util.Locale.getDefault()).format(new java.util.Date()));items.put(obj);saveData();pendingImage="";showHome();}
-              catch(Exception e){toast("Could not save item");}
-          }).show();
+        applyColors();
+        final Dialog dialog=new Dialog(this);
+        LinearLayout panel=new LinearLayout(this);panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setPadding(22,22,22,18);panel.setBackground(round(card,28));
+        TextView eyebrow=label("PERSONAL VAULT  /  NEW ITEM",10,muted);eyebrow.setLetterSpacing(.1f);panel.addView(eyebrow);
+        TextView title=label("Save something important",23,fg);title.setTypeface(null,android.graphics.Typeface.BOLD);
+        LinearLayout.LayoutParams tp=params(-1,-2);tp.topMargin=6;panel.addView(title,tp);
+        TextView subtitle=label("Documents, details and notes. All offline.",13,muted);
+        LinearLayout.LayoutParams sp=params(-1,-2);sp.topMargin=4;panel.addView(subtitle,sp);
+        ScrollView scroll=new ScrollView(this);
+        LinearLayout form=new LinearLayout(this);form.setOrientation(LinearLayout.VERTICAL);form.setPadding(0,10,0,8);
+        draftName=field("e.g. Aadhaar card");draftCat=field("Identity, Banking, Personal…");
+        draftTags=field("Tags, separated by commas");draftBody=field("Text, number or notes");
+        draftBody.setMinLines(3);draftBody.setGravity(Gravity.TOP);
+        form.addView(fieldLabel("NAME"));form.addView(draftName);
+        form.addView(fieldLabel("CATEGORY"));form.addView(draftCat);
+        form.addView(fieldLabel("TAGS"));form.addView(draftTags);
+        form.addView(fieldLabel("DETAILS"));form.addView(draftBody);
+        Button image=smallAction("＋   Add image",bg,fg);
+        LinearLayout.LayoutParams ip=params(-1,48);ip.topMargin=10;form.addView(image,ip);
+        imageStatus=label(pendingImage.isEmpty()?"No image attached":"Image attached  ✓",12,muted);
+        LinearLayout.LayoutParams isp=params(-1,-2);isp.topMargin=5;form.addView(imageStatus,isp);
+        image.setOnClickListener(v->imagePicker.launch("image/*"));
+        scroll.addView(form);LinearLayout.LayoutParams scp=params(-1,0);scp.weight=1;scp.topMargin=8;panel.addView(scroll,scp);
+        LinearLayout actions=new LinearLayout(this);actions.setGravity(Gravity.CENTER_VERTICAL);
+        Button cancel=smallAction("Cancel",bg,fg),save=smallAction("Save item",accent,android.graphics.Color.parseColor("#171814"));
+        LinearLayout.LayoutParams acp=new LinearLayout.LayoutParams(0,50,1);acp.rightMargin=8;actions.addView(cancel,acp);
+        actions.addView(save,new LinearLayout.LayoutParams(0,50,1));
+        LinearLayout.LayoutParams actp=params(-1,-2);actp.topMargin=10;panel.addView(actions,actp);
+        cancel.setOnClickListener(v->{pendingImage="";dialog.dismiss();});
+        save.setOnClickListener(v->{
+            String nm=draftName.getText().toString().trim();
+            if(nm.isEmpty()){draftName.setError("Enter a name");return;}
+            try{
+                JSONObject obj=new JSONObject();obj.put("name",nm);
+                obj.put("category",draftCat.getText().toString().trim().isEmpty()?"Other":draftCat.getText().toString().trim());
+                obj.put("tags",draftTags.getText().toString());obj.put("body",draftBody.getText().toString());
+                obj.put("image",pendingImage);obj.put("date",new java.text.SimpleDateFormat("dd MMM yyyy",java.util.Locale.getDefault()).format(new java.util.Date()));
+                items.put(obj);saveData();pendingImage="";dialog.dismiss();showHome();
+            }catch(Exception e){toast("Could not save item");}
+        });
+        dialog.setContentView(panel);dialog.show();
+        android.view.Window w=dialog.getWindow();
+        if(w!=null){w.setBackgroundDrawableResource(android.R.color.transparent);w.setLayout((int)(getResources().getDisplayMetrics().widthPixels*.92),(int)(getResources().getDisplayMetrics().heightPixels*.82));w.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);}
+    }
+    private TextView fieldLabel(String text){
+        TextView t=label(text,10,muted);t.setLetterSpacing(.1f);
+        LinearLayout.LayoutParams p=params(-1,-2);p.topMargin=10;p.bottomMargin=3;t.setLayoutParams(p);return t;
+    }
+    private Button smallAction(String text,int color,int textColor){
+        Button b=new Button(this);b.setText(text);b.setTextSize(14);b.setAllCaps(false);
+        b.setTypeface(android.graphics.Typeface.DEFAULT,android.graphics.Typeface.BOLD);b.setTextColor(textColor);
+        b.setBackground(round(color,16));b.setPadding(8,0,8,0);return b;
     }
     private void showDetails(int idx){
-        JSONObject o=items.optJSONObject(idx);if(o==null)return;
-        LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(20,4,20,4);
-        if(!o.optString("image","").isEmpty())try{byte[] b=Base64.decode(o.optString("image"),Base64.DEFAULT);ImageView im=new ImageView(this);im.setImageBitmap(BitmapFactory.decodeByteArray(b,0,b.length));im.setAdjustViewBounds(true);box.addView(im,params(-1,220));}catch(Exception ignored){}
-        TextView body=label(o.optString("body","(No text saved)"),15,fg);body.setTextIsSelectable(true);box.addView(body);
-        TextView tags=label("Tags: "+o.optString("tags","—"),12,muted);box.addView(tags);
-        new androidx.appcompat.app.AlertDialog.Builder(this).setTitle(o.optString("name")).setView(box)
-          .setNegativeButton("Close",(d,w)->{})
-          .setNeutralButton("Delete",(d,w)->new androidx.appcompat.app.AlertDialog.Builder(this).setTitle("Delete this item?").setMessage("This cannot be undone.").setNegativeButton("Cancel",null).setPositiveButton("Delete",(dd,ww)->{items.remove(idx);saveData();showHome();}).show())
-          .show();
+        JSONObject o=items.optJSONObject(idx);if(o==null)return;applyColors();
+        final Dialog dialog=new Dialog(this);
+        LinearLayout panel=new LinearLayout(this);panel.setOrientation(LinearLayout.VERTICAL);panel.setPadding(22,22,22,18);panel.setBackground(round(card,28));
+        TextView eyebrow=label(o.optString("category","Other").toUpperCase(java.util.Locale.ROOT)+"  /  SAVED ITEM",10,muted);eyebrow.setLetterSpacing(.1f);panel.addView(eyebrow);
+        TextView title=label(o.optString("name","Untitled"),24,fg);title.setTypeface(null,android.graphics.Typeface.BOLD);
+        LinearLayout.LayoutParams tp=params(-1,-2);tp.topMargin=6;panel.addView(title,tp);
+        ScrollView scroll=new ScrollView(this);LinearLayout details=new LinearLayout(this);details.setOrientation(LinearLayout.VERTICAL);
+        if(!o.optString("image","").isEmpty())try{byte[] bytes=Base64.decode(o.optString("image"),Base64.DEFAULT);ImageView im=new ImageView(this);im.setImageBitmap(BitmapFactory.decodeByteArray(bytes,0,bytes.length));im.setAdjustViewBounds(true);im.setScaleType(ImageView.ScaleType.CENTER_CROP);LinearLayout.LayoutParams p=params(-1,190);p.topMargin=14;details.addView(im,p);}catch(Exception ignored){}
+        TextView body=label(o.optString("body","No text saved"),15,fg);body.setTextIsSelectable(true);body.setPadding(14,14,14,14);body.setBackground(round(bg,16));LinearLayout.LayoutParams bp=params(-1,-2);bp.topMargin=14;details.addView(body,bp);
+        TextView tags=label("TAGS   "+(o.optString("tags","").isEmpty()?"None":o.optString("tags")),12,muted);LinearLayout.LayoutParams tagp=params(-1,-2);tagp.topMargin=12;details.addView(tags,tagp);
+        TextView date=label("Saved "+o.optString("date",""),12,muted);LinearLayout.LayoutParams dp=params(-1,-2);dp.topMargin=6;details.addView(date,dp);
+        scroll.addView(details);LinearLayout.LayoutParams scp=params(-1,0);scp.weight=1;scp.topMargin=8;panel.addView(scroll,scp);
+        LinearLayout actions=new LinearLayout(this);Button close=smallAction("Close",bg,fg),del=smallAction("Delete item",android.graphics.Color.parseColor("#F3D8D3"),android.graphics.Color.parseColor("#842D25"));
+        LinearLayout.LayoutParams ap=new LinearLayout.LayoutParams(0,48,1);ap.rightMargin=8;actions.addView(close,ap);actions.addView(del,new LinearLayout.LayoutParams(0,48,1));
+        LinearLayout.LayoutParams actp=params(-1,-2);actp.topMargin=14;panel.addView(actions,actp);
+        close.setOnClickListener(v->dialog.dismiss());
+        del.setOnClickListener(v->new androidx.appcompat.app.AlertDialog.Builder(this).setTitle("Delete this item?").setMessage("This cannot be undone.").setNegativeButton("Cancel",null).setPositiveButton("Delete",(d,w)->{items.remove(idx);saveData();dialog.dismiss();showHome();}).show());
+        dialog.setContentView(panel);dialog.show();android.view.Window w=dialog.getWindow();
+        if(w!=null){w.setBackgroundDrawableResource(android.R.color.transparent);w.setLayout((int)(getResources().getDisplayMetrics().widthPixels*.92),(int)(getResources().getDisplayMetrics().heightPixels*.72));}
     }
     private EditText field(String hint){EditText e=new EditText(this);e.setHint(hint);e.setTextSize(15);e.setPadding(12,8,12,8);return e;}
     private Button button(String text){Button b=new Button(this);b.setText(text);b.setAllCaps(false);b.setTextColor(android.graphics.Color.parseColor("#171814"));b.setBackground(round(accent,22));return b;}
