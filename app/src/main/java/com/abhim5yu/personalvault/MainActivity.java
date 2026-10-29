@@ -37,7 +37,7 @@ public class MainActivity extends AppCompatActivity {
     private LinearLayout root, content, list;
     private EditText search;
     private JSONArray items = new JSONArray();
-    private boolean dark = false, unlocked = false;
+    private boolean dark = false, unlocked = false, relockOnResume = false;
     private String pendingImage = "";
     private int bg, card, fg, muted, accent;
     private ActivityResultLauncher<String> imagePicker;
@@ -215,5 +215,6 @@ public class MainActivity extends AppCompatActivity {
     private LinearLayout.LayoutParams params(int w,int h){return new LinearLayout.LayoutParams(w<0?w:w,h<0?h:h);}
     private void toast(String s){Toast.makeText(this,s,Toast.LENGTH_SHORT).show();}
     @Override public void onBackPressed(){if(unlocked){unlocked=false;showLock();}else super.onBackPressed();}
-    @Override protected void onStop(){super.onStop();if(unlocked){unlocked=false;}}
+    @Override protected void onStop(){super.onStop();if(unlocked){unlocked=false;relockOnResume=true;}}
+    @Override protected void onResume(){super.onResume();if(relockOnResume){relockOnResume=false;showLock();}}
 }
