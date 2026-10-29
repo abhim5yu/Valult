@@ -20,12 +20,26 @@ jobs:
           packages: platform-tools
       - name: Install Android SDK
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
-      - name: Build debug APK
+      - name: Configure persistent signing key
+        env:
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: |
-          gradle --version
-          gradle assembleDebug --no-daemon
+          if [ -z "$RELEASE_KEYSTORE_BASE64" ] || [ -z "$RELEASE_STORE_PASSWORD" ] || [ -z "$RELEASE_KEY_ALIAS" ] || [ -z "$RELEASE_KEY_PASSWORD" ]; then
+            echo "::error::Add RELEASE_KEYSTORE_BASE64, RELEASE_STORE_PASSWORD, RELEASE_KEY_ALIAS and RELEASE_KEY_PASSWORD in Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          echo "$RELEASE_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/personal-vault-release.jks"
+          echo "RELEASE_KEYSTORE_PATH=$RUNNER_TEMP/personal-vault-release.jks" >> "$GITHUB_ENV"
+          echo "RELEASE_STORE_PASSWORD=$RELEASE_STORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "RELEASE_KEY_ALIAS=$RELEASE_KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "RELEASE_KEY_PASSWORD=$RELEASE_KEY_PASSWORD" >> "$GITHUB_ENV"
+      - name: Build signed APK
+        run: gradle assembleRelease --no-daemon
       - name: Rename APK
-        run: cp app/build/outputs/apk/debug/app-debug.apk PersonalVault.apk
+        run: cp app/build/outputs/apk/release/app-release.apk PersonalVault.apk
       - uses: actions/upload-artifact@v4
         with:
           name: PersonalVault-APK
@@ -36,6 +50,6 @@ jobs:
         with:
           tag_name: build-${{ github.run_number }}
           name: Personal Vault build ${{ github.run_number }}
-          body: "Automatically built Personal Vault Android APK. Install on your Android phone."
+          body: "Signed Personal Vault Android APK. Future builds using the same signing key can update this app in place."
           files: PersonalVault.apk
           make_latest: true
