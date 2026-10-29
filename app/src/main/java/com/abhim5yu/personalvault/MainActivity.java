@@ -196,6 +196,15 @@ public class MainActivity extends AppCompatActivity {
         TextView tagline=label("Private by design. Offline by default.",16,muted);
         LinearLayout.LayoutParams tagp=params(-1,30);tagp.topMargin=2;root.addView(tagline,tagp);
 
+        LinearLayout section=new LinearLayout(this);
+        section.setGravity(Gravity.CENTER_VERTICAL);
+        TextView saved=label("SAVED FILES",16,fg);
+        saved.setLetterSpacing(.08f);
+        section.addView(saved,new LinearLayout.LayoutParams(0,34,1));
+        TextView count=label(items.length()+" items",12,muted);
+        section.addView(count);
+        root.addView(section);
+
         search=new EditText(this);
         search.setSingleLine(true);
         search.setTextSize(18);
@@ -235,14 +244,6 @@ public class MainActivity extends AppCompatActivity {
         horizontal.addView(chips);
         root.addView(horizontal);
 
-        LinearLayout section=new LinearLayout(this);
-        section.setGravity(Gravity.CENTER_VERTICAL);
-        TextView saved=label("SAVED FILES",16,fg);
-        saved.setLetterSpacing(.08f);
-        section.addView(saved,new LinearLayout.LayoutParams(0,34,1));
-        TextView count=label(items.length()+" items",12,muted);
-        section.addView(count);
-        root.addView(section);
 
         ScrollView sc=new ScrollView(this);
         sc.setFillViewport(true);
