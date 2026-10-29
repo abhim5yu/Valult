@@ -287,10 +287,23 @@ public class MainActivity extends AppCompatActivity {
 
             LinearLayout row=new LinearLayout(this);
             row.setGravity(Gravity.CENTER_VERTICAL);
-            TextView symbol=label(item.optString("image","").isEmpty()?"▤":"▧",21,fg);
-            symbol.setGravity(Gravity.CENTER);
-            symbol.setBackground(round(accent,14));
-            row.addView(symbol,params(46,46));
+            String savedImage=item.optString("image","");
+            if(!savedImage.isEmpty()){
+                try{
+                    byte[] thumbBytes=Base64.decode(savedImage,Base64.DEFAULT);
+                    Bitmap thumb=BitmapFactory.decodeByteArray(thumbBytes,0,thumbBytes.length);
+                    ImageView preview=new ImageView(this);
+                    preview.setImageBitmap(thumb);
+                    preview.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                    preview.setBackground(round(accent,14));
+                    preview.setClipToOutline(true);
+                    row.addView(preview,params(46,46));
+                }catch(Exception ex){
+                    TextView symbol=label("▧",21,fg);symbol.setGravity(Gravity.CENTER);symbol.setBackground(round(accent,14));row.addView(symbol,params(46,46));
+                }
+            }else{
+                TextView symbol=label("▤",21,fg);symbol.setGravity(Gravity.CENTER);symbol.setBackground(round(accent,14));row.addView(symbol,params(46,46));
+            }
             LinearLayout names=new LinearLayout(this);
             names.setOrientation(LinearLayout.VERTICAL);
             names.setPadding(12,0,0,0);
