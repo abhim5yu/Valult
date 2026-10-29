@@ -44,6 +44,8 @@ public class MainActivity extends AppCompatActivity {
     private int bg, card, fg, muted, accent;
     private ActivityResultLauncher<String> imagePicker;
     private ActivityResultLauncher<String[]> filePicker;
+    private ActivityResultLauncher<String> exportPicker;
+    private byte[] exportBytes; private String exportMime="application/octet-stream";
     private String pendingFile = "", pendingFileName = "", pendingFileMime = "";
     private EditText filePassword;
     private LinearLayout pairsContainer;
@@ -72,6 +74,7 @@ public class MainActivity extends AppCompatActivity {
                 toast("Image attached");
             } catch(Exception e) { toast("Image could not be loaded"); }
         });
+        exportPicker = registerForActivityResult(new ActivityResultContracts.CreateDocument("application/octet-stream"), uri -> {if(uri==null||exportBytes==null)return;try(OutputStream out=getContentResolver().openOutputStream(uri)){if(out!=null)out.write(exportBytes);toast("Attachment exported");}catch(Exception e){toast("Could not export attachment");}finally{exportBytes=null;}});
         filePicker = registerForActivityResult(new ActivityResultContracts.OpenDocument(), uri -> {
             if(uri==null)return;
             try(InputStream in=getContentResolver().openInputStream(uri); ByteArrayOutputStream out=new ByteArrayOutputStream()){
@@ -233,7 +236,7 @@ public class MainActivity extends AppCompatActivity {
 
         LinearLayout section=new LinearLayout(this);
         section.setGravity(Gravity.CENTER_VERTICAL);
-        TextView saved=label("SAVED FILES",14,muted);
+        TextView saved=label("SAVED FILES",16,fg);
         saved.setLetterSpacing(.08f);
         section.addView(saved,new LinearLayout.LayoutParams(0,34,1));
         TextView count=label(items.length()+" items",12,muted);
@@ -462,7 +465,7 @@ public class MainActivity extends AppCompatActivity {
         dialog.setContentView(panel);dialog.show();android.view.Window w=dialog.getWindow();
         if(w!=null){w.setBackgroundDrawableResource(android.R.color.transparent);w.setLayout((int)(getResources().getDisplayMetrics().widthPixels*.92),(int)(getResources().getDisplayMetrics().heightPixels*.72));}
     }
-    private void exportAttachment(JSONObject o){try{byte[] data=Base64.decode(o.optString("fileData"),Base64.DEFAULT);File dir=new File(getExternalFilesDir(null),"exports");dir.mkdirs();File out=new File(dir,o.optString("fileName","attachment"));try(FileOutputStream stream=new FileOutputStream(out)){stream.write(data);}Intent share=new Intent(Intent.ACTION_SEND);share.setType(o.optString("fileMime","application/octet-stream"));share.putExtra(Intent.EXTRA_STREAM,androidx.core.content.FileProvider.getUriForFile(this,getPackageName()+".provider",out));share.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);startActivity(Intent.createChooser(share,"Export attachment"));}catch(Exception e){toast("Could not export attachment");}}
+    private void exportAttachment(JSONObject o){try{exportBytes=Base64.decode(o.optString("fileData"),Base64.DEFAULT);exportMime=o.optString("fileMime","application/octet-stream");exportPicker.launch(o.optString("fileName","attachment"));}catch(Exception e){toast("Could not export attachment");}}
     private EditText field(String hint){EditText e=new EditText(this);e.setHint(hint);e.setTextSize(15);e.setPadding(14,10,14,10);e.setTextColor(fg);e.setHintTextColor(muted);e.setSingleLine(false);e.setBackground(round(bg,14));e.setElevation(0);return e;}
     private Button button(String text){Button b=new Button(this);b.setText(text);b.setAllCaps(false);b.setTextColor(android.graphics.Color.parseColor("#171814"));b.setBackground(round(accent,22));return b;}
     private TextView label(String s,int size,int color){TextView t=new TextView(this);t.setText(s);t.setTextSize(size);t.setTextColor(color);return t;}
