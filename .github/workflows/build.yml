@@ -39,7 +39,7 @@ jobs:
           echo "RELEASE_KEY_ALIAS=$RELEASE_KEY_ALIAS" >> "$GITHUB_ENV"
           echo "RELEASE_KEY_PASSWORD=$RELEASE_KEY_PASSWORD" >> "$GITHUB_ENV"
       - name: Build signed release APK
-        if: ${{ secrets.RELEASE_KEYSTORE_BASE64 != '' && secrets.RELEASE_STORE_PASSWORD != '' && secrets.RELEASE_KEY_ALIAS != '' && secrets.RELEASE_KEY_PASSWORD != '' }}
+        if: ${{ env.RELEASE_KEYSTORE_BASE64 != '' && env.RELEASE_STORE_PASSWORD != '' && env.RELEASE_KEY_ALIAS != '' && env.RELEASE_KEY_PASSWORD != '' }}
         run: gradle assembleRelease --no-daemon
       - name: Build debug APK (signing secrets not configured)
         if: ${{ env.RELEASE_KEYSTORE_BASE64 == '' || env.RELEASE_STORE_PASSWORD == '' || env.RELEASE_KEY_ALIAS == '' || env.RELEASE_KEY_PASSWORD == '' }}
