@@ -43,7 +43,8 @@ public class MainActivity extends AppCompatActivity {
     private String pendingImage = "";
     private int bg, card, fg, muted, accent;
     private ActivityResultLauncher<String> imagePicker;
-    private EditText draftName, draftCat, draftTags, draftBody;
+    private EditText draftName, draftTags, draftBody;
+    private Spinner draftCat;
     private TextView imageStatus;
 
     @Override public void onCreate(Bundle state) {
@@ -341,11 +342,18 @@ public class MainActivity extends AppCompatActivity {
         LinearLayout.LayoutParams sp=params(-1,-2);sp.topMargin=4;panel.addView(subtitle,sp);
         ScrollView scroll=new ScrollView(this);
         LinearLayout form=new LinearLayout(this);form.setOrientation(LinearLayout.VERTICAL);form.setPadding(0,10,0,8);
-        draftName=field("e.g. Aadhaar card");draftCat=field("Identity, Banking, Personal…");
-        draftTags=field("Tags, separated by commas");draftBody=field("Text, number or notes");
+        draftName=field("e.g. Aadhaar card");
+        draftCat=new Spinner(this);
+        String[] categoryOptions={"Identity","Banking","Personal","Other"};
+        ArrayAdapter<String> categoryAdapter=new ArrayAdapter<String>(this,android.R.layout.simple_spinner_item,categoryOptions);
+        categoryAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        draftCat.setAdapter(categoryAdapter);
+        draftCat.setBackground(round(bg,14));
+        draftCat.setPadding(10,0,10,0);
+        draftTags=field("e.g. personal, important");draftBody=field("Text, number or notes");
         draftBody.setMinLines(3);draftBody.setGravity(Gravity.TOP);
         form.addView(fieldLabel("NAME"));form.addView(draftName);
-        form.addView(fieldLabel("CATEGORY"));form.addView(draftCat);
+        form.addView(fieldLabel("CATEGORY"));form.addView(draftCat,params(-1,48));
         form.addView(fieldLabel("TAGS"));form.addView(draftTags);
         form.addView(fieldLabel("DETAILS"));form.addView(draftBody);
         Button image=smallAction("＋   Add image",bg,fg);
@@ -365,7 +373,7 @@ public class MainActivity extends AppCompatActivity {
             if(nm.isEmpty()){draftName.setError("Enter a name");return;}
             try{
                 JSONObject obj=new JSONObject();obj.put("name",nm);
-                obj.put("category",draftCat.getText().toString().trim().isEmpty()?"Other":draftCat.getText().toString().trim());
+                obj.put("category",draftCat.getSelectedItem()==null?"Other":draftCat.getSelectedItem().toString());
                 obj.put("tags",draftTags.getText().toString());obj.put("body",draftBody.getText().toString());
                 obj.put("image",pendingImage);obj.put("date",new java.text.SimpleDateFormat("dd MMM yyyy",java.util.Locale.getDefault()).format(new java.util.Date()));
                 items.put(obj);saveData();pendingImage="";dialog.dismiss();showHome();
