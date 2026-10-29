@@ -39,6 +39,7 @@ public class MainActivity extends AppCompatActivity {
     private EditText search;
     private JSONArray items = new JSONArray();
     private boolean dark = false, unlocked = false, relockOnResume = false, pickingImage = false;
+    private String activeCategory = "All";
     private String pendingImage = "";
     private int bg, card, fg, muted, accent;
     private ActivityResultLauncher<String> imagePicker;
@@ -157,10 +158,10 @@ public class MainActivity extends AppCompatActivity {
         top.setGravity(Gravity.CENTER_VERTICAL);
         LinearLayout titles=new LinearLayout(this);
         titles.setOrientation(LinearLayout.VERTICAL);
-        TextView brand=label("PERSONAL VAULT",11,muted);
+        TextView brand=label("PERSONAL VAULT  ·  OFFLINE",11,muted);
         brand.setLetterSpacing(.08f);
         titles.addView(brand);
-        TextView heading=label("Your essentials",27,fg);
+        TextView heading=label("Your essentials.",30,fg);
         heading.setTypeface(android.graphics.Typeface.DEFAULT,android.graphics.Typeface.BOLD);
         titles.addView(heading);
         top.addView(titles,new LinearLayout.LayoutParams(0,-2,1));
@@ -173,13 +174,13 @@ public class MainActivity extends AppCompatActivity {
         lock.setOnClickListener(v->{unlocked=false;showLock();});
         root.addView(top);
 
-        TextView tagline=label("Private by design. Offline by default.",13,muted);
+        TextView tagline=label("Private by design. Offline by default.",14,muted);
         LinearLayout.LayoutParams tagp=params(-1,30);tagp.topMargin=2;root.addView(tagline,tagp);
 
         search=new EditText(this);
         search.setSingleLine(true);
         search.setTextSize(15);
-        search.setHint("⌕   Search everything…");
+        search.setHint("⌕   Search names, notes, tags, text…");
         search.setPadding(16,0,16,0);
         search.setBackground(round(card,16));
         search.setTextColor(fg);
@@ -196,13 +197,20 @@ public class MainActivity extends AppCompatActivity {
             TextView chip=label(category,13,fg);
             chip.setGravity(Gravity.CENTER);
             chip.setPadding(15,0,15,0);
-            chip.setBackground(round(category.equals("All")?accent:card,18));
+            chip.setBackground(round(category.equals(activeCategory)?accent:card,18));
             LinearLayout.LayoutParams cp=params(-2,34);
             cp.setMargins(0,0,8,0);
             chips.addView(chip,cp);
             chip.setOnClickListener(v->{
-                search.setText(category.equals("All")?"":category);
-                search.setSelection(search.getText().length());
+                activeCategory=category;
+                for(int j=0;j<chips.getChildCount();j++){
+                    View child=chips.getChildAt(j);
+                    if(child instanceof TextView){
+                        TextView t=(TextView)child;
+                        t.setBackground(round(t.getText().toString().equals(activeCategory)?accent:card,18));
+                    }
+                }
+                renderItems(search.getText().toString());
             });
         }
         horizontal.addView(chips);
@@ -227,7 +235,7 @@ public class MainActivity extends AppCompatActivity {
         sc.addView(list);
         root.addView(sc,new LinearLayout.LayoutParams(-1,0,1));
 
-        Button add=button("+   Add information");
+        Button add=button("＋   Add information");
         add.setTextSize(15);
         add.setTypeface(android.graphics.Typeface.DEFAULT,android.graphics.Typeface.BOLD);
         LinearLayout.LayoutParams addp=params(-1,54);
@@ -266,6 +274,7 @@ public class MainActivity extends AppCompatActivity {
             if(item==null)continue;
             String hay=(item.optString("name")+" "+item.optString("category")+" "+item.optString("tags")+" "+item.optString("body")).toLowerCase();
             if(!hay.contains(q))continue;
+            if(!activeCategory.equals("All") && !item.optString("category","Other").equalsIgnoreCase(activeCategory))continue;
             count++;
             LinearLayout box=new LinearLayout(this);
             box.setOrientation(LinearLayout.VERTICAL);
@@ -305,15 +314,15 @@ public class MainActivity extends AppCompatActivity {
             empty.setOrientation(LinearLayout.VERTICAL);
             empty.setGravity(Gravity.CENTER);
             empty.setPadding(20,32,20,32);
-            empty.setBackground(round(card,22));
-            TextView icon=label(q.isEmpty()?"＋":"⌕",30,fg);
+            empty.setBackground(round(dark?card:android.graphics.Color.parseColor("#EEF5D9"),24));
+            TextView icon=label(q.isEmpty()?"▤":"⌕",34,fg);
             icon.setGravity(Gravity.CENTER);
             empty.addView(icon,params(-1,46));
-            TextView title=label(q.isEmpty()?"Your vault starts here":"No results found",17,fg);
+            TextView title=label(q.isEmpty()?(activeCategory.equals("All")?"Your essentials, all in one place":"Nothing in "+activeCategory):"No results found",19,fg);
             title.setTypeface(android.graphics.Typeface.DEFAULT,android.graphics.Typeface.BOLD);
             title.setGravity(Gravity.CENTER);
             LinearLayout.LayoutParams tp=params(-1,-2);tp.topMargin=8;empty.addView(title,tp);
-            TextView hint=label(q.isEmpty()?"Add your first document, card or note.":"Try another name, tag or keyword.",13,muted);
+            TextView hint=label(q.isEmpty()?(activeCategory.equals("All")?"Save your Aadhaar, PAN, cards, images and important notes.":"Add an item in this category, or choose All."):"Try another name, tag or keyword.",14,muted);
             hint.setGravity(Gravity.CENTER);
             LinearLayout.LayoutParams hp=params(-1,-2);hp.topMargin=5;empty.addView(hint,hp);
             list.addView(empty,params(-1,-2));
