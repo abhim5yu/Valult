@@ -395,7 +395,7 @@ public class MainActivity extends AppCompatActivity {
         dialog.setContentView(panel);dialog.show();android.view.Window w=dialog.getWindow();
         if(w!=null){w.setBackgroundDrawableResource(android.R.color.transparent);w.setLayout((int)(getResources().getDisplayMetrics().widthPixels*.92),(int)(getResources().getDisplayMetrics().heightPixels*.72));}
     }
-    private EditText field(String hint){EditText e=new EditText(this);e.setHint(hint);e.setTextSize(15);e.setPadding(12,8,12,8);return e;}
+    private EditText field(String hint){EditText e=new EditText(this);e.setHint(hint);e.setTextSize(15);e.setPadding(14,10,14,10);e.setTextColor(fg);e.setHintTextColor(muted);e.setSingleLine(false);e.setBackground(round(bg,14));e.setElevation(0);return e;}
     private Button button(String text){Button b=new Button(this);b.setText(text);b.setAllCaps(false);b.setTextColor(android.graphics.Color.parseColor("#171814"));b.setBackground(round(accent,22));return b;}
     private TextView label(String s,int size,int color){TextView t=new TextView(this);t.setText(s);t.setTextSize(size);t.setTextColor(color);return t;}
     private android.graphics.drawable.GradientDrawable round(int color,int radius){android.graphics.drawable.GradientDrawable d=new android.graphics.drawable.GradientDrawable();d.setColor(color);d.setCornerRadius(radius);return d;}
